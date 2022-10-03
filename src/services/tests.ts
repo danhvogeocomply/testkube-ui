@@ -48,10 +48,11 @@ export const testsApi = createApi({
       },
     }),
     updateTest: builder.mutation<void, any>({
-      query: body => ({
-        url: `/tests/${body.id}`,
+      query: ({headers = {}, ...rest}) => ({
+        url: `/tests/${rest.name}`,
         method: 'PATCH',
-        body: body.data,
+        body: rest,
+        headers,
       }),
     }),
     deleteTest: builder.mutation<void, any>({
@@ -65,6 +66,12 @@ export const testsApi = createApi({
         url: `/tests/${body.id}/executions`,
         method: 'POST',
         body: body.data,
+      }),
+    }),
+    deleteExecution: builder.mutation<void, any>({
+      query: ({testId, executionId}) => ({
+        url: `/tests/${testId}/executions/${executionId}`,
+        method: 'DELETE',
       }),
     }),
   }),
@@ -82,4 +89,5 @@ export const {
   useDeleteTestMutation,
   useGetTestExecutionMetricsQuery,
   useRunTestMutation,
+  useDeleteExecutionMutation,
 } = testsApi;
