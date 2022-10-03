@@ -1,85 +1,52 @@
-import {useContext, useState} from 'react';
+import {useContext} from 'react';
 
 import {Form} from 'antd';
 import {UploadChangeParam} from 'antd/lib/upload';
 
-import {Option} from '@models/form';
-
-import {setRedirectTarget} from '@redux/reducers/configSlice';
-
 import {Button, Text} from '@custom-antd';
 
-import {decomposeLabels} from '@molecules/LabelsSelect/utils';
-
-import FirstStepHint from '@wizards/AddTestWizard/hints/FirstStepHint';
-import FirstStep from '@wizards/AddTestWizard/steps/FirstStep';
 import {getTestSourceSpecificFields} from '@wizards/AddTestWizard/utils';
 
 import {displayDefaultErrorNotification, displayDefaultNotificationFlow} from '@utils/notification';
 
-import {useAddTestMutation} from '@services/tests';
+import {useUpdateTestMutation} from '@services/tests';
 
-import {AnalyticsContext, MainContext} from '@contexts';
+import {MainContext,EntityDetailsContext} from '@contexts';
 
+import UpdateStep from '@src/components/wizards/AddTestWizard/steps/UpdateStep';
+import { notificationCall } from '@src/components/molecules';
 import {StyledFormItem, StyledFormSpace} from './CreationModal.styled';
 
-type AddTestPayload = {
-  data?: {
-    metadata: {
-      name: string;
-    };
-    spec: {
-      content: any;
-      type: any;
-    };
-    status: {
-      // eslint-disable-next-line camelcase
-      last_execution: any;
-    };
-  };
-  error?: any;
-};
-
-const TestCreationModalContent: React.FC = () => {
+const TestUpdateModalContent: React.FC = () => {
   const [form] = Form.useForm();
+  const {entityDetails, defaultStackRoute} = useContext(EntityDetailsContext);
 
-  const {dispatch, navigate} = useContext(MainContext);
-  const {analyticsTrack} = useContext(AnalyticsContext);
+  const {navigate} = useContext(MainContext);
 
-  const [localLabels, setLocalLabels] = useState<readonly Option[]>([]);
-  const [addTest, {isLoading}] = useAddTestMutation();
+  const [updateTest, {isLoading}] = useUpdateTestMutation();
 
   const onSaveClick = async (values: any, toRun: boolean = false) => {
     const {testSource, testType} = values;
 
     const testSourceSpecificFields = getTestSourceSpecificFields(values);
-
     const requestBody = {
-      name: values.name,
+      name: entityDetails.name,
       type: testType,
       content: {
         type: testSource === 'file-uri' ? 'string' : testSource,
         ...testSourceSpecificFields,
       },
-      labels: decomposeLabels(localLabels),
     };
-
-    return addTest(requestBody)
-      .then((res: AddTestPayload) => {
+    return updateTest(requestBody)
+      .then((res: any) => {
         displayDefaultNotificationFlow(res, () => {
-          analyticsTrack('trackEvents', {
-            type: res?.data?.spec?.type,
-            event: 'create-tests',
-          });
 
-          if (!toRun) {
-            dispatch(setRedirectTarget({targetTestId: res?.data?.metadata?.name}));
+          notificationCall('passed', `Update success.`);
 
-            return navigate(`/tests/executions/${values.name}`);
-          }
+          navigate(defaultStackRoute);
         });
       })
-      .catch((err: any) => {
+      .catch(err => {
         displayDefaultErrorNotification(err);
       });
   };
@@ -136,17 +103,16 @@ const TestCreationModalContent: React.FC = () => {
       >
         <StyledFormSpace size={24} direction="vertical">
           <Text className="regular big">Test details</Text>
-          <FirstStep onFileChange={onFileChange} onLabelsChange={setLocalLabels} />
+          <UpdateStep onFileChange={onFileChange} />
           <StyledFormItem>
             <Button htmlType="submit" loading={isLoading}>
-              {isLoading ? 'Creating...' : 'Create'}
+              {isLoading ? 'Updating...' : 'Update'}
             </Button>
           </StyledFormItem>
         </StyledFormSpace>
       </Form>
-      {FirstStepHint}
     </div>
   );
 };
 
-export default TestCreationModalContent;
+export default TestUpdateModalContent;
